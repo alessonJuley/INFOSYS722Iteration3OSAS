@@ -45,6 +45,7 @@ describe_data = df1.describe(include='all').T
 
 
 # -----2.3 - Data exploration-----
+df1['Age'].plot(kind='hist', bins=20, title="Age Distribution", legend=False)
 df1['Country'].value_counts().plot.bar()
 df1['Gender'].value_counts().plot.bar()
 df1['Cancer_Stage'].value_counts().plot.bar()
