@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sun Sep 28 23:01:20 2025
+Created on Mon Sep 29 01:10:42 2025
 
 @author: alessonabao
 """
@@ -17,82 +17,67 @@ df_reduced.shape
 df_reduced.info()
 
 # =====6.3=====
-# before you start, do: pip install xgboost
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import (
     accuracy_score, roc_auc_score, confusion_matrix, classification_report,
     roc_curve, precision_recall_curve
 )
-from xgboost import XGBClassifier
 
-# Define target and features
+# Define features and target
 X = df_reduced.drop(columns=["Survival_5_yrs"])   # predictors
-y = df_reduced["Survival_5_yrs"]                  # target
+y = df_reduced["Survival_5_yrs"].astype(int)      # target (0 = no, 1 = yes)
 
-# =====experiments with different splits=====
+# =====experiments with different splits =====
 for split in [0.2, 0.25]:   # 80/20 and 75/25
     print(f"\n=== Experiment with test_size={split} ({int((1-split)*100)}/{int(split*100)} split) ===")
     
-    # Split into training and test sets
+    # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=split, random_state=42, stratify=y
     )
     
-    # Build a simple baseline XGBoost model
-    model = XGBClassifier(
-        objective="binary:logistic",   # binary classification
-        n_estimators=100,              # number of trees
-        max_depth=3,                   # tree depth
-        learning_rate=0.1,             # learning rate
-        random_state=42,               # reproducibility
-        eval_metric="auc"              # track AUC
-    )
-
-    # Train the model
+    model = GaussianNB()
     model.fit(X_train, y_train)
-
-    # Predict on test set
+    
+    # Predictions
     y_pred = model.predict(X_test)
     y_proba = model.predict_proba(X_test)[:, 1]
-
-    # Evaluate performance
+    
+    # Evaluation
+    print("=== Naive Bayes Results ===")
     print("Accuracy:", accuracy_score(y_test, y_pred))
     print("ROC AUC:", roc_auc_score(y_test, y_proba))
     print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
     print("\nClassification Report:\n", classification_report(y_test, y_pred, zero_division=0))
-
+    
     # =====7=====
-    importances = model.feature_importances_
-    sorted_idx = np.argsort(importances)[::-1]
-
-    plt.figure(figsize=(10,6))
-    plt.bar(range(len(sorted_idx[:15])), importances[sorted_idx[:15]])
-    plt.xticks(range(len(sorted_idx[:15])), X.columns[sorted_idx[:15]], rotation=90)
-    plt.title(f"Top 15 Feature Importances (XGBoost, split={int((1-split)*100)}/{int(split*100)})")
-    plt.show()
-
+    # Naive Bayes does not provide feature importance directly
+    feature_means = pd.DataFrame(model.theta_, columns=X.columns, index=["Class 0", "Class 1"]).T
+    print("\n=== Class-conditional feature means (top 10) ===")
+    print(feature_means.head(10))
+    
     # =====8=====
     # ROC Curve
     fpr, tpr, _ = roc_curve(y_test, y_proba)
     plt.figure()
-    plt.plot(fpr, tpr, label=f"XGBoost (split={int((1-split)*100)}/{int(split*100)})")
+    plt.plot(fpr, tpr, label=f"Naive Bayes ({int((1-split)*100)}/{int(split*100)})")
     plt.plot([0,1],[0,1],"--",color="grey")
     plt.xlabel("False Positive Rate")
     plt.ylabel("True Positive Rate")
-    plt.title("ROC Curve")
+    plt.title("ROC Curve (Naive Bayes)")
     plt.legend()
     plt.show()
-
+    
     # Precision-Recall Curve
     prec, rec, _ = precision_recall_curve(y_test, y_proba)
     plt.figure()
-    plt.plot(rec, prec, label=f"XGBoost (split={int((1-split)*100)}/{int(split*100)})")
+    plt.plot(rec, prec, label=f"Naive Bayes ({int((1-split)*100)}/{int(split*100)})")
     plt.xlabel("Recall")
     plt.ylabel("Precision")
-    plt.title("Precision-Recall Curve")
+    plt.title("Precision-Recall Curve (Naive Bayes)")
     plt.legend()
     plt.show()
